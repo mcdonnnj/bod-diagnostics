@@ -1,5 +1,6 @@
 """
 Script to provide BOD failure info for trustymail reports.
+
 This script is designed to take the trustymail_results.csv file for a given
 organization's report and provide more granular information about why domains
 are failing. Additional information is given for DMARC and RUA URL failures
@@ -13,8 +14,10 @@ from . import utils
 
 bod_rua_url = "mailto:reports@dmarc.cyber.dhs.gov"
 
+
 def parse_csv(csv_file, domains=None):
-    count_values = defaultdict{lambda: 0}
+    """Parse a provided CSV file to provide trustymail diagnostic information."""
+    count_values = defaultdict(lambda: 0)
 
     failed_domains = {
         "invalid_dmarc": {
@@ -67,13 +70,6 @@ def parse_csv(csv_file, domains=None):
                 u.strip().lower() for u in row["DMARC Aggregate Report URIs"].split(",")
             ]:
                 valid_dmarc_bod1801_rua_url = True
-
-        bod_1801_compliant = (
-            spf_covered
-            and (not row["Domain Supports Weak Crypto"])
-            and valid_dmarc_policy_of_reject
-            and valid_dmarc_bod1801_rua_url
-        )
 
         if row["Domain Is Base Domain"] or (
             not row["Domain Is Base Domain"] and row["Domain Supports SMTP"]

@@ -1,5 +1,5 @@
 #!/usr/bin/env pytest -vs
-"""Tests for example."""
+"""Tests for bod-diagnostics."""
 
 import logging
 import os
@@ -7,6 +7,8 @@ import sys
 from unittest.mock import patch
 
 import pytest
+
+import bod_diagnostics
 
 log_levels = (
     "debug",
@@ -19,14 +21,14 @@ log_levels = (
 
 # define sources of version strings
 RELEASE_TAG = os.getenv("RELEASE_TAG")
-PROJECT_VERSION = example.__version__
+PROJECT_VERSION = bod_diagnostics.__version__
 
 
 def test_stdout_version(capsys):
     """Verify that version string sent to stdout agrees with the module version."""
     with pytest.raises(SystemExit):
         with patch.object(sys, "argv", ["bogus", "--version"]):
-            example.example.main()
+            bod_diagnostics.cli.main()
     captured = capsys.readouterr()
     assert (
         captured.out == f"{PROJECT_VERSION}\n"
@@ -51,7 +53,7 @@ def test_log_levels(level):
             assert (
                 logging.root.hasHandlers() is False
             ), "root logger should not have handlers yet"
-            return_code = example.example.main()
+            return_code = bod_diagnostics.cli.main()
             assert (
                 logging.root.hasHandlers() is True
             ), "root logger should now have a handler"

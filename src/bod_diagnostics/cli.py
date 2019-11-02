@@ -1,6 +1,6 @@
 #!/usr/bin/env python
-
-"""bod-diagnostics provides diagnostic information from BOD report CSVs.
+"""
+bod-diagnostics provides diagnostic information from BOD report CSVs.
 
 Usage:
     bod-diagnostics (--pshtt | --trustymail) [--debug] <csv-file> [DOMAIN ...]
@@ -16,6 +16,7 @@ Options:
     --debug       Print debug output
     -h --help     Show this help message and exit
     -v --version  Show version and exit
+
 """
 
 import logging
@@ -26,6 +27,7 @@ from . import pshtt
 from . import trustymail
 from ._version import __version__
 
+
 def setup_logging(debug=False):
     """Set logging level to debug if desired, otherwise set it to warning."""
     if debug:
@@ -33,19 +35,23 @@ def setup_logging(debug=False):
     else:
         log_level = logging.WARNING
 
-    logging.basicConfig(format='%(message)s', level=log_level)
+    logging.basicConfig(format="%(message)s", level=log_level)
+
 
 def main():
+    """Provide a command line front end to the diagnostic libraries."""
     args = docopt.docopt(__doc__, version=__version__)
     setup_logging(args["--debug"])
 
     try:
-        with open(args["<csv-file">]) as f:
+        with open(args["<csv-file>"]) as f:
             if args["--pshtt"]:
                 logging.debug("Providing pshtt diagnostics.")
                 pshtt.parse_csv(f)
             elif args["--trustymail"]:
                 logging.debug("Providing trustymail diagnostics.")
                 trustymail.parse_csv(f)
-    except Error as err:
-        logging.error(f"Problem parsing provided CSV file '{args['<csv-file>']}': {err}")
+    except Exception as err:
+        logging.error(
+            f"Problem parsing provided CSV file '{args['<csv-file>']}': {err}"
+        )

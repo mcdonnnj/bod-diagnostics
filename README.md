@@ -1,18 +1,20 @@
-# skeleton-python-library #
+# bod-diagnostics #
 
-[![GitHub Build Status](https://github.com/cisagov/skeleton-python-library/workflows/build/badge.svg)](https://github.com/cisagov/skeleton-python-library/actions)
-[![Coverage Status](https://coveralls.io/repos/github/cisagov/skeleton-python-library/badge.svg?branch=develop)](https://coveralls.io/github/cisagov/skeleton-python-library?branch=develop)
-[![Total alerts](https://img.shields.io/lgtm/alerts/g/cisagov/skeleton-python-library.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/cisagov/skeleton-python-library/alerts/)
-[![Language grade: Python](https://img.shields.io/lgtm/grade/python/g/cisagov/skeleton-python-library.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/cisagov/skeleton-python-library/context:python)
-[![Known Vulnerabilities](https://snyk.io/test/github/cisagov/skeleton-python-library/develop/badge.svg)](https://snyk.io/test/github/cisagov/skeleton-python-library)
+[![GitHub Build Status](https://github.com/mcdonnnj/bod-diagnostics/workflows/build/badge.svg)](https://github.com/mcdonnnj/bod-diagnostics/actions)
+[![Coverage Status](https://coveralls.io/repos/github/mcdonnnj/bod-diagnostics/badge.svg?branch=develop)](https://coveralls.io/github/mcdonnnj/bod-diagnostics?branch=develop)
+[![Total alerts](https://img.shields.io/lgtm/alerts/g/mcdonnnj/bod-diagnostics.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/mcdonnnj/bod-diagnostics/alerts/)
+[![Language grade: Python](https://img.shields.io/lgtm/grade/python/g/mcdonnnj/bod-diagnostics.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/mcdonnnj/bod-diagnostics/context:python)
+[![Known Vulnerabilities](https://snyk.io/test/github/mcdonnnj/bod-diagnostics/develop/badge.svg)](https://snyk.io/test/github/mcdonnnj/bod-diagnostics)
 
-This is a generic skeleton project that can be used to quickly get a
-new [cisagov](https://github.com/cisagov) Python library GitHub
-project started.  This skeleton project contains [licensing
-information](LICENSE), as well as
-[pre-commit hooks](https://pre-commit.com) and
-[GitHub Actions](https://github.com/features/actions) configurations
-appropriate for a Python library project.
+This project provides a command line tool to perform simple diagnostics on
+BOD 18-01 results by parsing the CSV files provided in a stakeholder's report
+PDF. These are calculated outputs from the [pshtt](https://github.com/cisagov/pshtt)
+or [trustymail](https://github.com/cisagov/trustymail) tools that have been run
+through their respective reporters ([pshtt_reporter](https://github.com/cisagov/pshtt_reporter)
+and [trustymail_reporter](https://github.com/cisagov/trustymail_reporter)).
+Upon processing these CSVs the tool will provide granular information by
+emulating the scoring taking place in the reporters to show what specific values
+are failing for test values that are derived from multiple value checks.
 
 ## Contributing ##
 

@@ -1,7 +1,6 @@
 #!/usr/bin/env pytest -vs
 """Tests for bod-diagnostics."""
 
-import logging
 import os
 import sys
 from unittest.mock import patch
@@ -43,18 +42,3 @@ def test_release_version():
     assert (
         RELEASE_TAG == f"v{PROJECT_VERSION}"
     ), "RELEASE_TAG does not match the project version"
-
-
-@pytest.mark.parametrize("level", log_levels)
-def test_log_levels(level):
-    """Validate commandline log-level arguments."""
-    with patch.object(sys, "argv", ["bogus", f"--log-level={level}"]):
-        with patch.object(logging.root, "handlers", []):
-            assert (
-                logging.root.hasHandlers() is False
-            ), "root logger should not have handlers yet"
-            return_code = bod_diagnostics.cli.main()
-            assert (
-                logging.root.hasHandlers() is True
-            ), "root logger should now have a handler"
-            assert return_code == 0, "main() should return success (0)"

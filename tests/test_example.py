@@ -7,7 +7,7 @@ from unittest.mock import patch
 
 import pytest
 
-import bod_diagnostics
+from bod_diagnostics import cli
 
 log_levels = (
     "debug",
@@ -20,14 +20,14 @@ log_levels = (
 
 # define sources of version strings
 RELEASE_TAG = os.getenv("RELEASE_TAG")
-PROJECT_VERSION = bod_diagnostics.__version__
+PROJECT_VERSION = cli.__version__
 
 
 def test_stdout_version(capsys):
     """Verify that version string sent to stdout agrees with the module version."""
     with pytest.raises(SystemExit):
         with patch.object(sys, "argv", ["bogus", "--version"]):
-            bod_diagnostics.cli.main()
+            cli.main()
     captured = capsys.readouterr()
     assert (
         captured.out == f"{PROJECT_VERSION}\n"

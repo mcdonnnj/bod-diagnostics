@@ -1,14 +1,14 @@
 #!/usr/bin/env python
-"""
-bod-diagnostics provides diagnostic information from BOD report CSVs.
+
+"""bod-diagnostics provides diagnostic information from BOD report CSVs.
 
 Usage:
     bod-diagnostics (--pshtt | --trustymail) [--debug] <csv-file> [DOMAIN ...]
     bod-diagnostics -h | -v
 
 Arguments:
-    csv-file The CSV file to parse
-    DOMAIN   An optional list of domains to filter against
+    csv-file  The CSV file to parse
+    DOMAIN    An optional list of domains to filter against
 
 Options:
     --pshtt       Parse results for a pshtt report

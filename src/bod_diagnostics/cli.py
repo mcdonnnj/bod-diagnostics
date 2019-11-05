@@ -19,13 +19,14 @@ Options:
 
 """
 
+import csv
 import logging
 
 import docopt
 
-from . import pshtt
-from . import trustymail
 from ._version import __version__
+from .parsers.https_report import HTTPSReport
+from .parsers.trustymail_report import TrustymailReport
 
 
 def setup_logging(debug=False):
@@ -45,12 +46,18 @@ def main():
 
     try:
         with open(args["<csv-file>"], "r") as f:
+            parser = None
             if args["--pshtt"]:
                 logging.debug("Providing pshtt diagnostics.")
-                pshtt.parse_csv(f, args["DOMAIN"])
+                parser = HTTPSReport(args["DOMAIN"])
             elif args["--trustymail"]:
                 logging.debug("Providing trustymail diagnostics.")
-                trustymail.parse_csv(f, args["DOMAIN"])
+                parser = TrustymailReport(args["DOMAIN"])
+
+            csv_reader = csv.DictReader(f)
+            for row in csv_reader:
+                parser.parse_row(row)
+
     except Exception as err:
         logging.error(
             f"Problem parsing provided CSV file '{args['<csv-file>']}': {err}"

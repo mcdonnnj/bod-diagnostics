@@ -1,14 +1,15 @@
 """
-Script to provide BOD failure info for trustymail reports.
+Module to provide BOD failure info for trustymail reports.
 
-This script is designed to take the trustymail_results.csv file for a given
+This module is designed to take the trustymail_results.csv file for a given
 organization's report and provide more granular information about why domains
 are failing. Additional information is given for DMARC and RUA URL failures
 because the checks are more involved than single value true/false checks.
 """
 
-from collections import defaultdict
 import csv
+from collections import defaultdict
+import logging
 
 from . import utils
 
@@ -29,7 +30,9 @@ def parse_csv(csv_file, domains=None):
             "domains": [],
         },
     }
-    domains = [domain.lower() for domain in domains]
+    if domains:
+        domains = [domain.lower() for domain in domains]
+    logging.debug(f"Domains provided: {domains}")
 
     csv_reader = csv.DictReader(csv_file)
     for row in csv_reader:

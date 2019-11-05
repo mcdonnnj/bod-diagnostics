@@ -1,5 +1,5 @@
 """
-This is the setup module for the example project.
+This is the setup module for the bod-diagnostics project.
 
 Based on:
 
@@ -29,7 +29,7 @@ def package_vars(version_file):
 
 
 setup(
-    name="example",
+    name="bod-diagnostics",
     # Versions should comply with PEP440
     version=package_vars("src/bod_diagnostics/_version.py")["__version__"],
     description="BOD diagnostic tool library",

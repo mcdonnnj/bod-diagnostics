@@ -44,13 +44,13 @@ def main():
     setup_logging(args["--debug"])
 
     try:
-        with open(args["<csv-file>"]) as f:
+        with open(args["<csv-file>"], "r") as f:
             if args["--pshtt"]:
                 logging.debug("Providing pshtt diagnostics.")
-                pshtt.parse_csv(f)
+                pshtt.parse_csv(f, args["DOMAIN"])
             elif args["--trustymail"]:
                 logging.debug("Providing trustymail diagnostics.")
-                trustymail.parse_csv(f)
+                trustymail.parse_csv(f, args["DOMAIN"])
     except Exception as err:
         logging.error(
             f"Problem parsing provided CSV file '{args['<csv-file>']}': {err}"

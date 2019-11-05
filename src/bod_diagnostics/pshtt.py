@@ -7,6 +7,7 @@ are failing.
 """
 
 import csv
+import logging
 
 from . import utils
 
@@ -27,16 +28,16 @@ def output_domain_results(domain, results):
             bod_failed = True
             print(f"\t{key} : {results[key]}")
             print("\t\tCalculated by")
-            print(f"\t\t{key} or (Live and Base Domain HSTS Preloaded)")
+            print(f"\t\t'{key}' or ('Live' and 'Base Domain HSTS Preloaded')")
     if bod_failed:
         print("\tBOD 18-01 Web Compliance Calculated by")
         print(
-            "\t(Domain Supports HTTPS and Domain Enforces HTTPS and Domain Uses Strong HSTS)"
+            "\t('Domain Supports HTTPS' and 'Domain Enforces HTTPS' and 'Domain Uses Strong HSTS')"
         )
-        print("\t or (Live")
-        print("\t     and (Base Domain HSTS Preloaded")
+        print("\t or ('Live'")
+        print("\t     and ('Base Domain HSTS Preloaded'")
         print(
-            "\t          or (not HTTPS Full Connection and HTTPS Client Auth Required)"
+            "\t          or (not 'HTTPS Full Connection' and 'HTTPS Client Auth Required')"
         )
         print("\t         )")
         print("\t    }")
@@ -47,7 +48,10 @@ def output_domain_results(domain, results):
 
 def parse_csv(csv_file, domains=None):
     """Parse a provided CSV file to provide pshtt diagnostic information."""
-    domains = [domain.lower() for domain in domains]
+    if domains:
+        domains = [domain.lower() for domain in domains]
+    logging.debug(f"Domains provided: {domains}")
+
     results = {}
 
     csv_reader = csv.DictReader(csv_file)

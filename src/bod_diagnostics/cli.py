@@ -3,7 +3,7 @@
 """bod-diagnostics provides diagnostic information from BOD report CSVs.
 
 Usage:
-    bod-diagnostics (--pshtt | --trustymail) [--debug] <csv-file> [DOMAIN ...]
+    bod-diagnostics (--https | --trustymail) [--debug] <csv-file> [DOMAIN ...]
     bod-diagnostics -h | -v
 
 Arguments:
@@ -11,7 +11,7 @@ Arguments:
     DOMAIN    An optional list of domains to filter against
 
 Options:
-    --pshtt       Parse results for a pshtt report
+    --https       Parse results for an https report
     --trustymail  Parse results for a trustymail report
     --debug       Print debug output
     -h --help     Show this help message and exit
@@ -19,13 +19,13 @@ Options:
 
 """
 
+import csv
 import logging
 
 import docopt
 
-from . import pshtt
-from . import trustymail
 from ._version import __version__
+from .report_parsers import HTTPSReport, TrustymailReport
 
 
 def setup_logging(debug=False):
@@ -45,12 +45,18 @@ def main():
 
     try:
         with open(args["<csv-file>"], "r") as f:
-            if args["--pshtt"]:
-                logging.debug("Providing pshtt diagnostics.")
-                pshtt.parse_csv(f, args["DOMAIN"])
+            parser = None
+            if args["--https"]:
+                logging.debug("Providing https diagnostics.")
+                parser = HTTPSReport(args["DOMAIN"])
             elif args["--trustymail"]:
                 logging.debug("Providing trustymail diagnostics.")
-                trustymail.parse_csv(f, args["DOMAIN"])
+                parser = TrustymailReport(args["DOMAIN"])
+
+            csv_reader = csv.DictReader(f)
+            for row in csv_reader:
+                parser.parse_row(row)
+            parser.output_results()
     except Exception as err:
         logging.error(
             f"Problem parsing provided CSV file '{args['<csv-file>']}': {err}"

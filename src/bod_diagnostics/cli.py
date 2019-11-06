@@ -25,8 +25,7 @@ import logging
 import docopt
 
 from ._version import __version__
-from .parsers.https_report import HTTPSReport
-from .parsers.trustymail_report import TrustymailReport
+from .report_parsers import HTTPSReport, TrustymailReport
 
 
 def setup_logging(debug=False):

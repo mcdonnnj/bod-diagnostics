@@ -17,103 +17,78 @@ class HTTPSReport:
     are failing.
     """
 
+    plain_values = [
+        "Live",
+        "Base Domain HSTS Preloaded",
+        "Domain Supports HTTPS",
+        "Domain Enforces HTTPS",
+        "Domain Uses Strong HSTS",
+    ]
+
+    scoring = {
+        "Uses HTTPS": "'Domain Supports HTTPS' or ('Live' and 'Base Domain HSTS Preloaded')",
+        "Enforces HTTPS": "'Domain Enforces HTTPS' or ('Live' and 'Base Domain HSTS Preloaded')",
+        "Uses Strong HSTS": "'Domain Uses Strong HSTS' or ('Live' and 'Base Domain HSTS Preloaded')",
+        "BOD 18-01 Web Compliance": "('Domain Supports HTTPS' and 'Domain Enforces HTTPS' and 'Domain Uses Strong HSTS') "
+        "or ('Live' and 'Base Domain HSTS Preloaded'))",
+    }
+
     def __init__(self, domains=None):
         """Set up internal variables."""
         self.__domains = domains if domains else []
         self.__domains = [domain.lower() for domain in self.__domains]
         logging.debug(f"Domains provided: {self.__domains}")
-
         self.__results = {}
-
-    def __output_domain_results(domain, results):
-        """Print the results for a domain in an informational manner."""
-        bod_failed = False
-        print(f"Domain: {domain}")
-        if "Live" in results:
-            print(f"\tLive : {results['Live']}")
-            print(
-                f"\tBase Domain HSTS Preloaded : {results['Base Domain HSTS Preloaded']}"
-            )
-        for key in (
-            "Domain Supports HTTPS",
-            "Domain Enforces HTTPS",
-            "Domain Uses Strong HSTS",
-        ):
-            if key in results:
-                bod_failed = True
-                print(f"\t{key} : {results[key]}")
-                print("\t\tCalculated by")
-                print(f"\t\t'{key}' or ('Live' and 'Base Domain HSTS Preloaded')")
-        if bod_failed:
-            print("\tBOD 18-01 Web Compliance Calculated by")
-            print(
-                "\t('Domain Supports HTTPS' and 'Domain Enforces HTTPS' and 'Domain Uses Strong HSTS')"
-            )
-            print("\t or ('Live'")
-            print("\t     and ('Base Domain HSTS Preloaded'")
-            print(
-                "\t          or (not 'HTTPS Full Connection' and 'HTTPS Client Auth Required')"
-            )
-            print("\t         )")
-            print("\t    }")
-        if "Domain Uses Weak Crypto" in results:
-            print("\tThe Following Weak Crypto Algorithms Are Supported:")
-            print(f"\t{results['Domain Uses Weak Crypto']}")
 
     def output_results(self):
         """Print the results of analysis."""
+        print("Domains with Failing Checks ::")
         for k, v in self.__results.items():
-            if v:
-                self.__output_domain_results(k, v)
+            if False not in v["Scores"]:
+                continue
+            print(f"  {k}")
+            print("    pshtt Values:")
+            for value in self.plain_values:
+                print(f"      {value}: {v[value]}")
+            print(f"    Scores:")
+            i = 0
+            for score, desc in self.scoring.items():
+                print(f"      {score} : {desc}")
+                print(f"      = {v['Scores'][i]}")
+                i += 1
 
     def parse_row(self, csv_row):
         """Parse a provided CSV file to provide pshtt diagnostic information."""
+        result_dict = {}
+
         # If we specified domains we check to see if this is one we want
         if self.__domains:
             if csv_row["Domain"].lower() not in self.__domains:
                 return
 
         csv_row = _utils.convert_booleans(csv_row)
+        domain_live = csv_row["Live"]
+        domain_hsts_preload = csv_row["Base Domain HSTS Preloaded"]
+        domain_fallback_check = domain_live and domain_hsts_preload
+        domain_supports_https = csv_row["Domain Supports HTTPS"]
+        domain_enforces_https = csv_row["Domain Enforces HTTPS"]
+        domain_strong_hsts = csv_row["Domain Uses Strong HSTS"]
 
-        domain_fallback_check = (
-            csv_row["Live"] and csv_row["Base Domain HSTS Preloaded"]
-        )
-
-        domain_uses_https = csv_row["Domain Supports HTTPS"] or domain_fallback_check
-        domain_enforces_https = (
-            csv_row["Domain Enforces HTTPS"] or domain_fallback_check
-        )
-        domain_uses_strong_hsts = (
-            csv_row["Domain Uses Strong HSTS"] or domain_fallback_check
-        )
-        domain_uses_weak_crypto = csv_row["Domain Supports Weak Crypto"]
-
-        self.__results[csv_row["Domain"].lower()] = {}
-        if not (
-            domain_uses_https and domain_enforces_https and domain_uses_strong_hsts
-        ):
-            self.__results[csv_row["Domain"].lower()]["Live"] = csv_row["Live"]
-            self.__results[csv_row["Domain"].lower()][
-                "Base Domain HSTS Preloaded"
-            ] = csv_row["Base Domain HSTS Preloaded"]
-
-            if not domain_uses_https:
-                self.__results[csv_row["Domain"].lower()][
-                    "Domain Supports HTTPS"
-                ] = csv_row["Domain Supports HTTPS"]
-            if not domain_enforces_https:
-                self.__results[csv_row["Domain"].lower()][
-                    "Domain Enforces HTTPS"
-                ] = csv_row["Domain Enforces HTTPS"]
-            if not domain_uses_strong_hsts:
-                self.__results[csv_row["Domain"].lower()][
-                    "Domain Uses Strong HSTS"
-                ] = csv_row["Domain Uses Strong HSTS"]
-
-        if domain_uses_weak_crypto:
-            self.__results[csv_row["Domain"].lower()][
-                "Domain Uses Weak Crypto"
-            ] = csv_row["Web Hosts With Weak Crypto"]
+        result_dict["Live"] = domain_live
+        result_dict["Base Domain HSTS Preloaded"] = domain_hsts_preload
+        result_dict["Domain Supports HTTPS"] = domain_supports_https
+        result_dict["Domain Enforces HTTPS"] = domain_enforces_https
+        result_dict["Domain Uses Strong HSTS"] = domain_strong_hsts
+        result_dict["Scores"] = [
+            (domain_supports_https or domain_fallback_check),
+            (domain_enforces_https or domain_fallback_check),
+            (domain_strong_hsts or domain_fallback_check),
+            (
+                (domain_supports_https and domain_enforces_https and domain_strong_hsts)
+                or domain_fallback_check
+            ),
+        ]
+        self.__results[csv_row["Domain"].lower()] = result_dict
 
 
 class TrustymailReport:
@@ -124,6 +99,8 @@ class TrustymailReport:
     are failing. Additional information is given for DMARC and RUA URL failures
     because the checks are more involved than single value true/false checks.
     """
+
+    bod_rua_url = "mailto:reports@dmarc.cyber.dhs.gov"
 
     def __init__(self, domains=None):
         """Set up internal variables."""
@@ -138,11 +115,10 @@ class TrustymailReport:
                 "domains": [],
             },
             "invalid_rua": {
-                "title": f'Domains Missing RUA URL "{self.__bod_rua_url}" ::',
+                "title": f'Domains Missing RUA URL "{self.bod_rua_url}" ::',
                 "domains": [],
             },
         }
-        self.__bod_rua_url = "mailto:reports@dmarc.cyber.dhs.gov"
 
     def output_results(self):
         """Print the results of analysis."""
@@ -151,9 +127,9 @@ class TrustymailReport:
                 continue
             print(v["title"])
             for domain in v["domains"]:
-                print(f"\t{domain['domain']}")
+                print(f"  {domain['domain']}")
                 for line in domain["message"]:
-                    print(f"\t{line}")
+                    print(f"  {line}")
             print()
 
         for k, v in self.__count_values.items():
@@ -198,7 +174,7 @@ class TrustymailReport:
 
         valid_dmarc_bod1801_rua_url = False
         if valid_dmarc:
-            if self.__bod_rua_url in [
+            if self.bod_rua_url in [
                 u.strip().lower()
                 for u in csv_row["DMARC Aggregate Report URIs"].split(",")
             ]:
@@ -222,29 +198,29 @@ class TrustymailReport:
                                 self.__count_values["bod_compliant"] += 1
                             else:
                                 self.__count_values["bod_failed"] += 1
-                                message = ["\tRUA URLs:"]
+                                message = ["  RUA URLs:"]
                                 for url in [
                                     u.strip().lower()
                                     for u in csv_row[
                                         "DMARC Aggregate Report URIs"
                                     ].split(",")
                                 ]:
-                                    message.append(f"\t\t{url}")
+                                    message.append(f"    {url}")
                                 self.__failed_domains["invalid_rua"]["domains"].append(
                                     {"domain": csv_row["Domain"], "message": message}
                                 )
                         else:
                             self.__count_values["dmarc_invalid"] += 1
                             message = [
-                                f"\tBase Domain: {csv_row['Domain Is Base Domain']}",
-                                f"\tValid DMARC: {valid_dmarc}",
-                                f"\tDMARC Policy: \"{csv_row['DMARC Policy']}\"",
-                                f"\tDMARC Subdomain Policy: \"{csv_row['DMARC Subdomain Policy']}\"",
-                                f"\tDMARC Policy Percentage: {csv_row['DMARC Policy Percentage']}",
-                                f"\tConditions (Must be True):",
-                                f'\t\tValid DMARC and Policy == "reject": {valid_dmarc_policy_reject}',
-                                f'\t\tValid DMARC and (not Base Domain or Subdomain Policy == "reject"): {valid_dmarc_subdomain_policy_reject}',
-                                f"\t\tValid DMARC and Policy Percentage == 100: {valid_dmarc_policy_pct}",
+                                f"  Base Domain: {csv_row['Domain Is Base Domain']}",
+                                f"  Valid DMARC: {valid_dmarc}",
+                                f"  DMARC Policy: \"{csv_row['DMARC Policy']}\"",
+                                f"  DMARC Subdomain Policy: \"{csv_row['DMARC Subdomain Policy']}\"",
+                                f"  DMARC Policy Percentage: {csv_row['DMARC Policy Percentage']}",
+                                f"  Conditions (Must be True):",
+                                f'    Valid DMARC and Policy == "reject": {valid_dmarc_policy_reject}',
+                                f'    Valid DMARC and (not Base Domain or Subdomain Policy == "reject"): {valid_dmarc_subdomain_policy_reject}',
+                                f"    Valid DMARC and Policy Percentage == 100: {valid_dmarc_policy_pct}",
                             ]
                             self.__failed_domains["invalid_dmarc"]["domains"].append(
                                 {"domain": csv_row["Domain"], "message": message}

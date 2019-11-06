@@ -43,22 +43,21 @@ def main():
     args = docopt.docopt(__doc__, version=__version__)
     setup_logging(args["--debug"])
 
-    # try:
-    with open(args["<csv-file>"], "r") as f:
-        parser = None
-        if args["--https"]:
-            logging.debug("Providing https diagnostics.")
-            parser = HTTPSReport(args["DOMAIN"])
-        elif args["--trustymail"]:
-            logging.debug("Providing trustymail diagnostics.")
-            parser = TrustymailReport(args["DOMAIN"])
+    try:
+        with open(args["<csv-file>"], "r") as f:
+            parser = None
+            if args["--https"]:
+                logging.debug("Providing https diagnostics.")
+                parser = HTTPSReport(args["DOMAIN"])
+            elif args["--trustymail"]:
+                logging.debug("Providing trustymail diagnostics.")
+                parser = TrustymailReport(args["DOMAIN"])
 
-        csv_reader = csv.DictReader(f)
-        for row in csv_reader:
-            parser.parse_row(row)
-        parser.output_results()
-
-    # except Exception as err:
-    #     logging.error(
-    #         f"Problem parsing provided CSV file '{args['<csv-file>']}': {err}"
-    #     )
+            csv_reader = csv.DictReader(f)
+            for row in csv_reader:
+                parser.parse_row(row)
+            parser.output_results()
+    except Exception as err:
+        logging.error(
+            f"Problem parsing provided CSV file '{args['<csv-file>']}': {err}"
+        )

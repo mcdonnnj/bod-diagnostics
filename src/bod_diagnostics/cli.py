@@ -14,7 +14,7 @@ Options:
     --https       Parse results for an https report
     --trustymail  Parse results for a trustymail report
     --debug       Print debug output
-    --csv         Output in CSV format.
+    --csv         Output results in CSV format.
     -h --help     Show this help message and exit
     -v --version  Show version and exit
 

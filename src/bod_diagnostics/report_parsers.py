@@ -43,8 +43,31 @@ class HTTPSReport:
         self.csv_output = csv_output
         self._results = {}
 
+    def _output_record(self, domain, values, csv_writer=None):
+        if csv_writer:
+            row = {"Domain": domain}
+            for value in self.plain_values:
+                row[value] = values[value]
+            i = 0
+            for score, desc in self.scoring.items():
+                row[f"{score} - {desc}"] = values["Scores"][i]
+                i += 1
+            csv_writer.writerow(row)
+        else:
+            print(f"  {domain}")
+            print("    pshtt Values:")
+            for value in self.plain_values:
+                print(f"      {value}: {values[value]}")
+            print(f"    Scores:")
+            i = 0
+            for score, desc in self.scoring.items():
+                print(f"      {score} : {desc}")
+                print(f"      = {values['Scores'][i]}")
+                i += 1
+
     def output_results(self):
         """Print the results of analysis."""
+        csv_writer = None
         if self.csv_output:
             csv_fieldnames = ["Domain"]
             csv_fieldnames.extend(self.plain_values)
@@ -52,32 +75,14 @@ class HTTPSReport:
                 csv_fieldnames.append(f"{name} - {desc}")
             csv_writer = csv.DictWriter(sys.stdout, csv_fieldnames)
             csv_writer.writeheader()
-            for k, v in self._results.items():
-                if False not in v["Scores"]:
-                    continue
-                row = {"Domain": k}
-                for value in self.plain_values:
-                    row[value] = v[value]
-                i = 0
-                for score, desc in self.scoring.items():
-                    row[f"{score} - {desc}"] = v["Scores"][i]
-                    i += 1
-                csv_writer.writerow(row)
         else:
             print("Domains with Failing Checks ::")
-            for k, v in self._results.items():
-                if False not in v["Scores"]:
-                    continue
-                print(f"  {k}")
-                print("    pshtt Values:")
-                for value in self.plain_values:
-                    print(f"      {value}: {v[value]}")
-                print(f"    Scores:")
-                i = 0
-                for score, desc in self.scoring.items():
-                    print(f"      {score} : {desc}")
-                    print(f"      = {v['Scores'][i]}")
-                    i += 1
+
+        for k, v in self._results.items():
+            if False not in v["Scores"]:
+                continue
+            else:
+                self._output_record(k, v, csv_writer)
 
     def parse_row(self, csv_row):
         """Parse a provided CSV file to provide pshtt diagnostic information."""

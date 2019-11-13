@@ -3,7 +3,7 @@
 """bod-diagnostics provides diagnostic information from BOD report CSVs.
 
 Usage:
-    bod-diagnostics (--https | --trustymail) [--debug] <csv-file> [DOMAIN ...]
+    bod-diagnostics (--https | --trustymail) [--csv] [--debug] <csv-file> [DOMAIN ...]
     bod-diagnostics -h | -v
 
 Arguments:
@@ -14,6 +14,7 @@ Options:
     --https       Parse results for an https report
     --trustymail  Parse results for a trustymail report
     --debug       Print debug output
+    --csv         Output in CSV format.
     -h --help     Show this help message and exit
     -v --version  Show version and exit
 
@@ -48,10 +49,10 @@ def main():
             parser = None
             if args["--https"]:
                 logging.debug("Providing https diagnostics.")
-                parser = HTTPSReport(args["DOMAIN"])
+                parser = HTTPSReport(args["DOMAIN"], args["--csv"])
             elif args["--trustymail"]:
                 logging.debug("Providing trustymail diagnostics.")
-                parser = TrustymailReport(args["DOMAIN"])
+                parser = TrustymailReport(args["DOMAIN"], args["--csv"])
 
             csv_reader = csv.DictReader(f)
             for row in csv_reader:

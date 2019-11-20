@@ -4,7 +4,9 @@ This module hosts a colletion of classes to parse a given report for more
 detailed information about why a domain is failing BOD 18-01 checks.
 """
 from collections import defaultdict
+import csv
 import logging
+import sys
 
 from . import _utils
 
@@ -33,37 +35,62 @@ class HTTPSReport:
         "or ('Live' and 'Base Domain HSTS Preloaded'))",
     }
 
-    def __init__(self, domains=None):
+    def __init__(self, domains=None, csv_output=False):
         """Set up internal variables."""
-        self.__domains = domains if domains else []
-        self.__domains = [domain.lower() for domain in self.__domains]
-        logging.debug(f"Domains provided: {self.__domains}")
-        self.__results = {}
+        self._domains = domains if domains else []
+        self._domains = [domain.lower() for domain in self._domains]
+        logging.debug(f"Domains provided: {self._domains}")
+        self.csv_output = csv_output
+        self._results = {}
 
-    def output_results(self):
-        """Print the results of analysis."""
-        print("Domains with Failing Checks ::")
-        for k, v in self.__results.items():
-            if False not in v["Scores"]:
-                continue
-            print(f"  {k}")
+    def _output_record(self, domain, values, csv_writer=None):
+        if csv_writer:
+            row = {"Domain": domain}
+            for value in self.plain_values:
+                row[value] = values[value]
+            i = 0
+            for score, desc in self.scoring.items():
+                row[f"{score} - {desc}"] = values["Scores"][i]
+                i += 1
+            csv_writer.writerow(row)
+        else:
+            print(f"  {domain}")
             print("    pshtt Values:")
             for value in self.plain_values:
-                print(f"      {value}: {v[value]}")
+                print(f"      {value}: {values[value]}")
             print(f"    Scores:")
             i = 0
             for score, desc in self.scoring.items():
                 print(f"      {score} : {desc}")
-                print(f"      = {v['Scores'][i]}")
+                print(f"      = {values['Scores'][i]}")
                 i += 1
+
+    def output_results(self):
+        """Print the results of analysis."""
+        csv_writer = None
+        if self.csv_output:
+            csv_fieldnames = ["Domain"]
+            csv_fieldnames.extend(self.plain_values)
+            for name, desc in self.scoring.items():
+                csv_fieldnames.append(f"{name} - {desc}")
+            csv_writer = csv.DictWriter(sys.stdout, csv_fieldnames)
+            csv_writer.writeheader()
+        else:
+            print("Domains with Failing Checks ::")
+
+        for k, v in self._results.items():
+            if False not in v["Scores"]:
+                continue
+            else:
+                self._output_record(k, v, csv_writer)
 
     def parse_row(self, csv_row):
         """Parse a provided CSV file to provide pshtt diagnostic information."""
         result_dict = {}
 
         # If we specified domains we check to see if this is one we want
-        if self.__domains:
-            if csv_row["Domain"].lower() not in self.__domains:
+        if self._domains:
+            if csv_row["Domain"].lower() not in self._domains:
                 return
 
         csv_row = _utils.convert_booleans(csv_row)
@@ -88,7 +115,7 @@ class HTTPSReport:
                 or domain_fallback_check
             ),
         ]
-        self.__results[csv_row["Domain"].lower()] = result_dict
+        self._results[csv_row["Domain"].lower()] = result_dict
 
 
 class TrustymailReport:
@@ -102,49 +129,79 @@ class TrustymailReport:
 
     bod_rua_url = "mailto:reports@dmarc.cyber.dhs.gov"
 
-    def __init__(self, domains=None):
-        """Set up internal variables."""
-        self.__domains = domains if domains else []
-        self.__domains = [domain.lower() for domain in self.__domains]
-        logging.debug(f"Domains provided: {self.__domains}")
+    plain_values = [
+        "Base Domain",
+        "Valid DMARC",
+        "DMARC Policy",
+        "DMARC Subdomain Policy",
+        "DMARC Policy Percentage",
+    ]
 
-        self.__count_values = defaultdict(lambda: 0)
-        self.__failed_domains = {
-            "invalid_dmarc": {
-                "title": "Domains With Invalid DMARC Configurations ::",
-                "domains": [],
-            },
-            "invalid_rua": {
-                "title": f'Domains Missing RUA URL "{self.bod_rua_url}" ::',
-                "domains": [],
-            },
-        }
+    conditions = [
+        "'Valid DMARC' == \"reject\"",
+        "'Valid DMARc' and (not 'Base Domain' or 'DMARC Subdomain Policy' == \"reject\")",
+        "'Valid DMARC' and 'Policy Percentage' == 100",
+    ]
+
+    def __init__(self, domains=None, csv_output=False):
+        """Set up internal variables."""
+        self._domains = domains if domains else []
+        self._domains = [domain.lower() for domain in self._domains]
+        logging.debug(f"Domains provided: {self._domains}")
+
+        self.csv_output = csv_output
+        self._count_values = defaultdict(lambda: 0)
+        self._failed_domains = []
 
     def output_results(self):
         """Print the results of analysis."""
-        for k, v in self.__failed_domains.items():
-            if len(v["domains"]) == 0:
-                continue
-            print(v["title"])
-            for domain in v["domains"]:
-                print(f"  {domain['domain']}")
-                for line in domain["message"]:
-                    print(f"  {line}")
+        if self.csv_output:
+            csv_fieldnames = ["Domain"]
+            csv_fieldnames.extend(self.plain_values)
+            csv_fieldnames.extend(self.conditions)
+            csv_fieldnames.append(f"RUA URLs (should contain '{self.bod_rua_url}')")
+            csv_writer = csv.DictWriter(sys.stdout, csv_fieldnames)
+            csv_writer.writeheader()
+
+            for record in self._failed_domains:
+                row = {"Domain": record["domain"]}
+                for value in self.plain_values:
+                    row[value] = record["result"][value]
+                i = 0
+                for condition in self.conditions:
+                    row[condition] = record["result"]["Conditions"][i]
+                    i += 1
+                row[f"RUA URLs (should contain '{self.bod_rua_url}')"] = ";".join(
+                    record["result"]["RUA URLs"]
+                )
+                csv_writer.writerow(row)
+        else:
+            for record in self._failed_domains:
+                print(f"  {record['domain']}")
+                for value in self.plain_values:
+                    print(f"    {value} : {record['result'][value]}")
+                print("    Conditions (must be true):")
+                for d, c in zip(self.conditions, record["result"]["Conditions"]):
+                    print(f"      {d} : {c}")
+                if len(record["result"]["RUA URLs"]) > 0:
+                    print(f"    RUA URLs (should contain '{self.bod_rua_url}'):")
+                    for url in record["result"]["RUA URLs"]:
+                        print(f"      {url}")
             print()
 
-        for k, v in self.__count_values.items():
-            print(f"{k} :: {v}")
+            for k, v in self._count_values.items():
+                print(f"{k} :: {v}")
 
     def parse_row(self, csv_row):
         """Parse a provided CSV file to provide trustymail diagnostic information."""
         # If we specified domains we check to see if this is one we want
-        if self.__domains:
-            if csv_row["Domain"].lower() not in self.__domains:
+        if self._domains:
+            if csv_row["Domain"].lower() not in self._domains:
                 return
 
         csv_row = _utils.convert_booleans(csv_row)
 
-        self.__count_values["total_domains"] += 1
+        self._count_values["total_domains"] += 1
 
         valid_dmarc = (
             csv_row["Valid DMARC"] or csv_row["Valid DMARC Record on Base Domain"]
@@ -183,53 +240,53 @@ class TrustymailReport:
         if csv_row["Domain Is Base Domain"] or (
             not csv_row["Domain Is Base Domain"] and csv_row["Domain Supports SMTP"]
         ):
-            self.__count_values["domains_checked"] += 1
+            self._count_values["domains_checked"] += 1
             if (
                 csv_row["Domain Supports SMTP"] and csv_row["Domain Supports STARTTLS"]
             ) or (not csv_row["Domain Supports SMTP"]):
-                self.__count_values["smtp_valid"] += 1
+                self._count_values["smtp_valid"] += 1
                 if spf_covered:
-                    self.__count_values["spf_covered"] += 1
+                    self._count_values["spf_covered"] += 1
                     if not csv_row["Domain Supports Weak Crypto"]:
-                        self.__count_values["no_weak_crypto"] += 1
+                        self._count_values["no_weak_crypto"] += 1
                         if valid_dmarc_policy_of_reject:
-                            self.__count_values["dmarc_valid"] += 1
+                            self._count_values["dmarc_valid"] += 1
                             if valid_dmarc_bod1801_rua_url:
-                                self.__count_values["bod_compliant"] += 1
+                                self._count_values["bod_compliant"] += 1
                             else:
-                                self.__count_values["bod_failed"] += 1
-                                message = ["  RUA URLs:"]
-                                for url in [
+                                self._count_values["bod_failed"] += 1
+                        else:
+                            self._count_values["dmarc_invalid"] += 1
+                            result = {
+                                "Base Domain": csv_row["Domain Is Base Domain"],
+                                "Valid DMARC": valid_dmarc,
+                                "DMARC Policy": csv_row["DMARC Policy"],
+                                "DMARC Subdomain Policy": csv_row[
+                                    "DMARC Subdomain Policy"
+                                ],
+                                "DMARC Policy Percentage": csv_row[
+                                    "DMARC Policy Percentage"
+                                ],
+                                "Conditions": [
+                                    valid_dmarc_policy_reject,
+                                    valid_dmarc_subdomain_policy_reject,
+                                    valid_dmarc_policy_pct,
+                                ],
+                                "RUA URLs": [
                                     u.strip().lower()
                                     for u in csv_row[
                                         "DMARC Aggregate Report URIs"
                                     ].split(",")
-                                ]:
-                                    message.append(f"    {url}")
-                                self.__failed_domains["invalid_rua"]["domains"].append(
-                                    {"domain": csv_row["Domain"], "message": message}
-                                )
-                        else:
-                            self.__count_values["dmarc_invalid"] += 1
-                            message = [
-                                f"  Base Domain: {csv_row['Domain Is Base Domain']}",
-                                f"  Valid DMARC: {valid_dmarc}",
-                                f"  DMARC Policy: \"{csv_row['DMARC Policy']}\"",
-                                f"  DMARC Subdomain Policy: \"{csv_row['DMARC Subdomain Policy']}\"",
-                                f"  DMARC Policy Percentage: {csv_row['DMARC Policy Percentage']}",
-                                f"  Conditions (Must be True):",
-                                f'    Valid DMARC and Policy == "reject": {valid_dmarc_policy_reject}',
-                                f'    Valid DMARC and (not Base Domain or Subdomain Policy == "reject"): {valid_dmarc_subdomain_policy_reject}',
-                                f"    Valid DMARC and Policy Percentage == 100: {valid_dmarc_policy_pct}",
-                            ]
-                            self.__failed_domains["invalid_dmarc"]["domains"].append(
-                                {"domain": csv_row["Domain"], "message": message}
+                                ],
+                            }
+                            self._failed_domains.append(
+                                {"domain": csv_row["Domain"], "result": result}
                             )
                     else:
-                        self.__count_values["has_weak_crypto"] += 1
+                        self._count_values["has_weak_crypto"] += 1
                 else:
-                    self.__count_values["spf_not_covered"] += 1
+                    self._count_values["spf_not_covered"] += 1
             else:
-                self.__count_values["smtp_invalid"] += 1
+                self._count_values["smtp_invalid"] += 1
         else:
-            self.__count_values["domains_skipped"] += 1
+            self._count_values["domains_skipped"] += 1

@@ -3,6 +3,7 @@
 This module hosts a colletion of classes to parse a given report for more
 detailed information about why a domain is failing BOD 18-01 checks.
 """
+# Standard Python Libraries
 from collections import defaultdict
 import csv
 import logging
@@ -58,7 +59,7 @@ class HTTPSReport:
             print("    pshtt Values:")
             for value in self.plain_values:
                 print(f"      {value}: {values[value]}")
-            print(f"    Scores:")
+            print("    Scores:")
             i = 0
             for score, desc in self.scoring.items():
                 print(f"      {score} : {desc}")

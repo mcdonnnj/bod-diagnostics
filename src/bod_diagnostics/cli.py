@@ -20,9 +20,11 @@ Options:
 
 """
 
+# Standard Python Libraries
 import csv
 import logging
 
+# Third-Party Libraries
 import docopt
 
 from ._version import __version__

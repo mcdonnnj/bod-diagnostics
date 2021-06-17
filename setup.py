@@ -8,10 +8,13 @@ Based on:
 - https://blog.ionelmc.ro/2014/05/25/python-packaging/#the-structure
 """
 
+# Standard Python Libraries
+import codecs
 from glob import glob
-from os.path import splitext, basename
+from os.path import abspath, basename, dirname, join, splitext
 
-from setuptools import setup, find_packages
+# Third-Party Libraries
+from setuptools import find_packages, setup
 
 
 def readme():
@@ -20,28 +23,42 @@ def readme():
         return f.read()
 
 
-def package_vars(version_file):
-    """Read in and return the variables defined by the version_file."""
-    pkg_vars = {}
-    with open(version_file) as f:
-        exec(f.read(), pkg_vars)  # nosec
-    return pkg_vars
+# Below two methods were pulled from:
+# https://packaging.python.org/guides/single-sourcing-package-version/
+def read(rel_path):
+    """Open a file for reading from a given relative path."""
+    here = abspath(dirname(__file__))
+    with codecs.open(join(here, rel_path), "r") as fp:
+        return fp.read()
+
+
+def get_version(version_file):
+    """Extract a version number from the given file path."""
+    for line in read(version_file).splitlines():
+        if line.startswith("__version__"):
+            delim = '"' if '"' in line else "'"
+            return line.split(delim)[1]
+    raise RuntimeError("Unable to find version string.")
 
 
 setup(
     name="bod-diagnostics",
     # Versions should comply with PEP440
-    version=package_vars("src/bod_diagnostics/_version.py")["__version__"],
-    description="BOD diagnostic tool library",
+    version=get_version("src/bod_diagnostics/_version.py"),
+    description="BOD 18-01 diagnostic tool library",
     long_description=readme(),
     long_description_content_type="text/markdown",
-    # NCATS "homepage"
-    url="https://www.us-cert.gov/resources/ncats",
-    # The project's main homepage
-    download_url="https://github.com/mcdonnnj/bod-diagnostics",
+    # Project homepage
+    url="https://github.com/mcdonnnj/bod-diagnostics",
+    # Additional URLs for this project per
+    # https://packaging.python.org/guides/distributing-packages-using-setuptools/#project-urls
+    project_urls={
+        "Source": "https://github.com/mcdonnnj/bod-diagnostics",
+        "Tracker": "https://github.com/mcdonnnj/bod-diagnostics/issues",
+    },
     # Author details
-    author="Cyber and Infrastructure Security Agency",
-    author_email="ncats@hq.dhs.gov",
+    author="Nicholas McDonnell",
+    author_email="50747025+mcdonnnj@users.noreply.github.com",
     license="License :: CC0 1.0 Universal (CC0 1.0) Public Domain Dedication",
     # See https://pypi.python.org/pypi?%3Aaction=list_classifiers
     classifiers=[
@@ -60,15 +77,31 @@ setup(
         "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
     ],
+    python_requires=">=3.6",
     # What does your project relate to?
     keywords="diagnostics",
     packages=find_packages(where="src"),
     package_dir={"": "src"},
     py_modules=[splitext(basename(path))[0] for path in glob("src/*.py")],
     include_package_data=True,
-    install_requires=["docopt", "setuptools"],
-    extras_require={"test": ["pre-commit", "pytest", "pytest-cov", "coveralls"]},
+    install_requires=["docopt", "setuptools >= 24.2.0"],
+    extras_require={
+        "test": [
+            "coverage",
+            # coveralls 1.11.0 added a service number for calls from
+            # GitHub Actions. This caused a regression which resulted in a 422
+            # response from the coveralls API with the message:
+            # Unprocessable Entity for url: https://coveralls.io/api/v1/jobs
+            # 1.11.1 fixed this issue, but to ensure expected behavior we'll pin
+            # to never grab the regression version.
+            "coveralls != 1.11.0",
+            "pre-commit",
+            "pytest-cov",
+            "pytest",
+        ]
+    },
     # Conveniently allows one to run the CLI tool as `example`
     entry_points={"console_scripts": ["bod-diagnostics = bod_diagnostics.cli:main"]},
 )
